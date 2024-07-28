@@ -162,6 +162,7 @@ class EquationOfState {
   MeshBlock *pmy_block_;                 // ptr to MeshBlock containing this EOS
   Real iso_sound_speed_, gamma_;         // isothermal Cs, ratio of specific heats
   Real density_floor_, pressure_floor_;  // density and pressure floors
+  bool pfloor_avg_bool_;                 // Boolean for average pressure floor
   Real energy_floor_;                    // energy floor
   Real scalar_floor_; // dimensionless concentration floor
   Real sigma_max_, beta_min_;            // limits on ratios of gas quantities to pmag

@@ -47,6 +47,11 @@ EquationOfState::EquationOfState(MeshBlock *pmb, ParameterInput *pin) :
     energy_floor_ = pin->GetReal("hydro", "efloor");
     pressure_floor_ = energy_floor_*(pin->GetOrAddReal("hydro", "gamma", 2.) - 1.);
     pressure_floor_ = pin->GetOrAddReal("hydro", "pfloor", pressure_floor_);
+    if (pin->DoesParameterExist("hydro", "avgpfloor")) {
+      pfloor_avg_bool_ = pin->GetBoolean("hydro", "avgpfloor");
+    } else {
+      pfloor_avg_bool_ = false;
+    }
   } else {
     pressure_floor_ = pin->GetOrAddReal("hydro", "pfloor", std::sqrt(1024*float_min));
     energy_floor_ = pressure_floor_/(pin->GetOrAddReal("hydro", "gamma", 2.) - 1.);
@@ -196,17 +201,24 @@ Real EquationOfState::FastMagnetosonicSpeed(const Real prim[(NWAVE)], const Real
 //! \brief Apply density and pressure floors to reconstructed L/R cell interface states
 
 void EquationOfState::ApplyPrimitiveFloors(AthenaArray<Real> &prim, int k, int j, int i) {
-  Real& w_d  = prim(IDN,i);
-  Real& w_p  = prim(IPR,i);
+  Real& w_d = prim(IDN, k, j, i);
+  Real& w_p = prim(IPR, k, j, i);
 
   // apply density floor
-  w_d = (w_d > density_floor_) ?  w_d : density_floor_;
-  // apply pressure floor
-  w_p = (w_p > pressure_floor_) ?  w_p : pressure_floor_;
+  w_d = (w_d > density_floor_) ? w_d : density_floor_;
 
+  // apply pressure floor
+  if (pfloor_avg_bool_) {
+    // Compute the average pressure from neighboring cells
+    Real avg_p = (prim(IPR, k, j, i+1) + prim(IPR, k, j, i-1) + 
+                  prim(IPR, k, j+1, i) + prim(IPR, k, j-1, i) + 
+                  prim(IPR, k+1, j, i) + prim(IPR, k-1, j, i)) / 6.0;
+    w_p = (w_p > avg_p) ? w_p : avg_p;
+  } else {
+    w_p = (w_p > pressure_floor_) ? w_p : pressure_floor_;
+  }
   return;
 }
-
 //----------------------------------------------------------------------------------------
 //! \fn void EquationOfState::ApplyPrimitiveConservedFloors(AthenaArray<Real> &prim,
 //!           AthenaArray<Real> &cons, FaceField &b, int k, int j, int i) {
